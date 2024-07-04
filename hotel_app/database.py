@@ -1,13 +1,11 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
-DATABASE_URL = "sqlite:///./database.db"
+DATABASE_URL = "sqlite:///./data_base.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread" : False})
 
-local_session = sessionmaker(bind=engine, autoflush=False)
+session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 Base = declarative_base()
-
-
-
