@@ -16,3 +16,8 @@ class AdminDB(AdminBase):
 
     class Config:
         from_attributes = True
+
+
+class token_response(BaseModel):
+    access_token : str
+    token_type : str

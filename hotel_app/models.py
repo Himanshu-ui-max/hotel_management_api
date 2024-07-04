@@ -16,7 +16,7 @@ class Admin(Base):
 
 
 class Customer(Base):
-    __tablename__ = "Customer"
+    __tablename__ = "customers"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String)

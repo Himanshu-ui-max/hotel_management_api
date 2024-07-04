@@ -11,4 +11,8 @@ def create_admin(db:session, admin : schemas.AdminIn):
     db.refresh(data_db)
     return schemas.AdminOut(**admin.dict())
 
-
+def get_admin(db: session, email : str)->models.Admin | bool:
+    admin = db.query(models.Admin).filter(models.Admin.email == email).first()
+    if not admin:
+        return False
+    return admin
