@@ -3,7 +3,7 @@ from datetime import timedelta, timezone, datetime
 
 SECURITY_KEY = "HIMS' Management Systme"
 
-def decode_token(token : dict):
+def decode_token(token : str):
     data = jwt.decode(token, algorithms=["HS256"], key=SECURITY_KEY)
     return data
 

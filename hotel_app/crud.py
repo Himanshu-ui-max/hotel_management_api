@@ -16,3 +16,24 @@ def get_admin(db: session, email : str)->models.Admin | bool:
     if not admin:
         return False
     return admin
+def delete_admin(db : session, admin_id : int):
+    db.commit()
+    db.refresh()
+
+
+def create_customer(db:session, customer : schemas.CustomerIn):
+    password = customer.password
+    hashed = hashing.hash_password(password)
+    data_db = models.Customer(name = customer.name, email = customer.email, hashed_password = hashed, Booking = 0)
+    print(data_db)
+    db.add(data_db)
+    db.commit()
+    db.refresh(data_db)
+    return schemas.CustomerOut(**customer.dict())
+
+
+def get_customer(db: session, email : str)->models.Customer | bool:
+    customer = db.query(models.Customer).filter(models.Customer.email == email).first()
+    if not customer:
+        return False
+    return customer

@@ -35,9 +35,40 @@ async def admin_login(db : session = Depends(get_DB), request : OAuth2PasswordRe
 
 
 @app.post("/create_admin", response_model=schemas.AdminOut, tags=["admin"])
-async def get(admin : schemas.AdminIn, db : session = Depends(get_DB)):
+async def create_admin(admin : schemas.AdminIn, db : session = Depends(get_DB)):
     admin_db = crud.get_admin(db,admin.email)
     if admin_db:
         raise HTTPException(status_code=400, detail="User already exists")
     return crud.create_admin(db, admin)
+
+
+@app.delete("/delete_admin")
+async def delete_admin(db : session = Depends(get_DB), Token : str = Depends(security_schema_1)):
+    token_data = token.decode_token(Token)
+    admin_id = token_data["id"]
+    crud.delete_admin(db, admin_id)
+
+@app.post("/create_customer", response_model=schemas.AdminOut, tags=["customer"])
+async def create_customer(customer : schemas.CustomerIn, db : session = Depends(get_DB)):
+    customer_db = crud.get_customer(db,customer.email)
+    if customer_db:
+        raise HTTPException(status_code=400, detail="User already exists")
+    return crud.create_customer(db, customer)
+
+@app.post("/customerlogin", response_model=schemas.token_response, tags=["customer"])
+async def customer_login(customer : OAuth2PasswordRequestForm = Depends(), db : session = Depends(get_DB)):
+    customer_db = crud.get_customer(db, customer.username)
+    if not customer_db:
+        raise HTTPException(status_code=400, detail="Incorrect Password or email")
+    if not hashing.verify_password(customer.password, customer_db.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect Password or email")
+    token_data = {
+        "customer_id" : customer_db.id
+    }
+    jwt_token = token.encode_token(token_data)
+    return {
+        "access_token" : jwt_token,
+        "token_type" : "bearer"
+    }
+
 

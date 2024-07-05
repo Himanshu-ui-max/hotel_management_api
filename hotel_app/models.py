@@ -21,5 +21,5 @@ class Customer(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String)
     email = Column(String, unique=True, index=True)
-    hashes_password = Column(String)
+    hashed_password = Column(String)
     Booking = Column(String)

@@ -16,6 +16,23 @@ class AdminDB(AdminBase):
 
     class Config:
         from_attributes = True
+class CustomerBase(BaseModel):
+    name : str
+    email : EmailStr
+    
+
+class CustomerIn(CustomerBase):
+    password : str
+
+class CustomerOut(CustomerBase):
+    pass
+
+class CustomerDB(CustomerBase):
+    id : int | None  = None
+    hashed_password : str
+    booking : int | None = None
+    class Config:
+        from_attributes = True
 
 
 class token_response(BaseModel):
