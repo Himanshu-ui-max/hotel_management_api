@@ -1,5 +1,11 @@
 from pydantic import BaseModel, EmailStr
 
+
+class login(BaseModel):
+    email : EmailStr
+    password : str
+    isAdmin : bool
+
 class AdminBase(BaseModel):
     name : str
     email : EmailStr
