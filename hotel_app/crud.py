@@ -22,6 +22,12 @@ def update_admin_email(db : session, admin_id : int, new_email : str):
     db.query(models.Admin).filter(models.Admin.id == admin_id).update({models.Admin.email : new_email})
     db.commit()
 
+
+def update_admin_password(db : session, admin_id : int, new_password : str):
+    new_hashed_password = hashing.hash_password(new_password)
+    db.query(models.Admin).filter(models.Admin.id == admin_id).update({models.Admin.hashed_password : new_hashed_password})
+    db.commit()
+
 def delete_admin(db : session, admin_id : int):
     db.query(models.Admin).filter(models.Admin.id == admin_id).delete()
     db.commit()
@@ -39,6 +45,11 @@ def create_customer(db:session, customer : schemas.CustomerIn):
 
 def update_customer_email(db : session, customer_id : int, new_email : str):
     db.query(models.Customer).filter(models.Customer.id == customer_id).update({models.Customer.email : new_email})
+    db.commit()
+
+def update_customer_password(db : session, customer_id : int, new_password : str):
+    new_hashed_password = hashing.hash_password(new_password)
+    db.query(models.Customer).filter(models.Customer.id == customer_id).update({models.Customer.hashed_password : new_hashed_password})
     db.commit()
 
 def get_customer(db: session, email : str)->models.Customer | bool:

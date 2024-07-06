@@ -58,6 +58,13 @@ async def update_admin_email(db : session = Depends(get_DB), new_email : EmailSt
     return {
         "message" : "email updated successfuly"
     }
+@app.put("/update_admin_password", tags=["admin"])
+async def update_admin_email(db : session = Depends(get_DB), new_password : str = Form(...), Token : str = Header(...)):
+    token_data = token.decode_token(Token)
+    crud.update_admin_password(db, token_data["admin_id"], new_password)
+    return {
+        "message" : "password updated successfuly"
+    }
 
 @app.delete("/delete_admin", tags=["admin"])
 async def delete_admin(db : session = Depends(get_DB), Token : str = Header(...)):
@@ -77,11 +84,19 @@ async def create_customer(customer : schemas.CustomerIn, db : session = Depends(
     return crud.create_customer(db, customer)
 
 @app.put("/update_customer_email", tags=["customer"])
-async def update_admin_customer(db : session = Depends(get_DB), new_email : EmailStr = Form(...), Token : str = Header(...)):
+async def update_customer_Email(db : session = Depends(get_DB), new_email : EmailStr = Form(...), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     crud.update_customer_email(db, token_data["customer_id"], new_email)
     return {
         "message" : "email updated successfuly"
+    }
+
+@app.put("/update_customer_password", tags=["customer"])
+async def update_customer_password(db : session = Depends(get_DB), new_password : str = Form(...), Token : str = Header(...)):
+    token_data = token.decode_token(Token)
+    crud.update_customer_password(db, token_data["customer_id"], new_password)
+    return {
+        "message" : "password updated successfuly"
     }
 
 
