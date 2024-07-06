@@ -1,3 +1,4 @@
+from sqlalchemy import delete
 from sqlalchemy.orm import session
 from . import schemas, models, database, hashing
 
@@ -17,8 +18,8 @@ def get_admin(db: session, email : str)->models.Admin | bool:
         return False
     return admin
 def delete_admin(db : session, admin_id : int):
+    db.query(models.Admin).filter(models.Admin.id == admin_id).delete()
     db.commit()
-    db.refresh()
 
 
 def create_customer(db:session, customer : schemas.CustomerIn):
@@ -37,3 +38,7 @@ def get_customer(db: session, email : str)->models.Customer | bool:
     if not customer:
         return False
     return customer
+
+def delete_customer(db : session, customer_id : int):
+    db.query(models.Customer).filter(models.Customer.id == customer_id).delete()
+    db.commit()

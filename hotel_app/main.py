@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import session
 from . import crud, schemas, hashing, token
-from .database import session_local
+from .database import session_local, engine, Base
 app = FastAPI(title="HIMS' Hotel Management")
+
+Base.metadata.create_all(bind=engine)
 
 def get_DB():
     db = session_local()
@@ -45,6 +47,9 @@ async def create_admin(admin : schemas.AdminIn, db : session = Depends(get_DB)):
 @app.delete("/delete_admin")
 async def delete_admin(db : session = Depends(get_DB), Token : str = Depends(security_schema_1)):
     token_data = token.decode_token(Token)
+    print("keys :" , token_data.keys())
+    if "customer_id" in token_data.keys():
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authorised for this route")
     admin_id = token_data["id"]
     crud.delete_admin(db, admin_id)
 
@@ -53,6 +58,8 @@ async def create_customer(customer : schemas.CustomerIn, db : session = Depends(
     customer_db = crud.get_customer(db,customer.email)
     if customer_db:
         raise HTTPException(status_code=400, detail="User already exists")
+    if crud.get_admin(db, customer.email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin can not be a customer")
     return crud.create_customer(db, customer)
 
 @app.post("/customerlogin", response_model=schemas.token_response, tags=["customer"])
@@ -71,4 +78,9 @@ async def customer_login(customer : OAuth2PasswordRequestForm = Depends(), db : 
         "token_type" : "bearer"
     }
 
+# @app.delete("/delete_customer", tags=["customer"])
+# async def delete_customer(db : session = Depends(get_DB), Token : str = Depends(security_schema_2)):
+#     token_data = token.decode_token(Token)
+#     customer_id = token_data["customer_id"]
+#     crud.delete_customer(db, customer_id)
 
