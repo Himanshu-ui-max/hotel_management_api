@@ -1,6 +1,9 @@
 from sqlalchemy import delete
 from sqlalchemy.orm import session
 from . import schemas, models, database, hashing
+import spacy
+
+nlp = spacy.load("en_core_web_lg")
 
 def create_admin(db:session, admin : schemas.AdminIn):
     password = admin.password
@@ -76,3 +79,23 @@ def create_question(db : session, user_id : int, question : schemas.QuestionIn):
     db.add(question_db)
     db.commit()
     db.refresh(question_db)
+
+
+def create_answer(db : session, user_id : int, answer : schemas.AnswerIn):
+    answer_db = models.Answer(answer = answer.answer, question_id = answer.question_id, owner_id = user_id)
+    db.add(answer_db)
+    db.commit()
+    db.refresh(answer_db)
+
+def get_questions_by_title(db : session, title: str):
+    questions_db = db.query(models.Question).all()
+    to_return : list[dict] = []
+    for question in questions_db:
+        if nlp(question.title).similarity(nlp(title)) >= 0.5:            
+            data = {
+                "title" : question.title,
+                "question" : question.question,
+                "tags" : question.tags.split(",")
+            }
+            to_return.append(data)
+    return to_return

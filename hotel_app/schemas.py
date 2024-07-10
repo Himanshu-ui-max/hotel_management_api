@@ -9,7 +9,6 @@ class AnswerDB(AnswerBase):
     question_id : int
 
 class AnswerIn(AnswerBase):
-    owner_id : str
     question_id : int
 
 

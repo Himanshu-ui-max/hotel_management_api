@@ -110,6 +110,9 @@ async def delete_User(db : session = Depends(get_DB), Token : str = Header(...))
 
 
 
+
+
+
 @app.post("/create_question", tags=["Question"])
 async def create_question(question : schemas.QuestionIn, db : session = Depends(get_DB), Token : str = Header(...)):
     data = token.decode_token(Token)
@@ -118,3 +121,18 @@ async def create_question(question : schemas.QuestionIn, db : session = Depends(
     return {
         "message" : "success"
     }
+
+
+@app.post("/create_answer", tags=["Question"])
+async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    user_id = data["User_id"]
+    crud.create_answer(db, user_id, answer)
+    return {
+        "message" : "success"
+    }
+
+@app.get("/get_question_by_title", tags = ["Question"])
+async def get_question_by_title(title : str, db : session = Depends(get_DB)):
+    answers = crud.get_questions_by_title(db, title)
+    return answers
