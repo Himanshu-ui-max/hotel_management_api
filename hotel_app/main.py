@@ -4,7 +4,7 @@ from pydantic import EmailStr
 from sqlalchemy.orm import session
 from . import crud, schemas, hashing, token
 from .database import session_local, engine, Base
-app = FastAPI(title="HIMS' Hotel Management")
+app = FastAPI(title="HIMS' Stackoverflow")
 
 Base.metadata.create_all(bind=engine)
 
@@ -18,7 +18,7 @@ def get_DB():
 
 
 
-@app.post("/login", tags=["admin", "customer"])
+@app.post("/login", tags=["admin", "User"])
 async def login(db: session = Depends(get_DB), email : EmailStr = Form(...), password : str = Form(...), isAdmin : bool = Form(...)):
     if isAdmin:
         admin_db = crud.get_admin(db, email)
@@ -32,13 +32,13 @@ async def login(db: session = Depends(get_DB), email : EmailStr = Form(...), pas
         jwt_token = token.encode_token(data)
         return jwt_token
     else:
-        customer_db = crud.get_customer(db, email)
-        if not customer_db:
+        User_db = crud.get_User(db, email)
+        if not User_db:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
-        if not hashing.verify_password(password, customer_db.hashed_password):
+        if not hashing.verify_password(password, User_db.hashed_password):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
         data = {
-            "customer_id" : customer_db.id
+            "User_id" : User_db.id
         }
         jwt_token = token.encode_token(data)
         return jwt_token
@@ -69,42 +69,52 @@ async def update_admin_email(db : session = Depends(get_DB), new_password : str 
 @app.delete("/delete_admin", tags=["admin"])
 async def delete_admin(db : session = Depends(get_DB), Token : str = Header(...)):
     token_data = token.decode_token(Token)
-    if "customer_id" in token_data.keys():
+    if "User_id" in token_data.keys():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authorised for this route")
     admin_id = token_data["admin_id"]
     crud.delete_admin(db, admin_id)
 
-@app.post("/create_customer", response_model=schemas.AdminOut, tags=["customer"])
-async def create_customer(customer : schemas.CustomerIn, db : session = Depends(get_DB)):
-    customer_db = crud.get_customer(db,customer.email)
-    if customer_db:
+@app.post("/create_User", response_model=schemas.AdminOut, tags=["User"])
+async def create_User(User : schemas.UserIn, db : session = Depends(get_DB)):
+    User_db = crud.get_User(db,User.email)
+    if User_db:
         raise HTTPException(status_code=400, detail="User already exists")
-    if crud.get_admin(db, customer.email):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin can not be a customer")
-    return crud.create_customer(db, customer)
+    if crud.get_admin(db, User.email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin can not be a User")
+    return crud.create_User(db, User)
 
-@app.put("/update_customer_email", tags=["customer"])
-async def update_customer_Email(db : session = Depends(get_DB), new_email : EmailStr = Form(...), Token : str = Header(...)):
+@app.put("/update_User_email", tags=["User"])
+async def update_User_Email(db : session = Depends(get_DB), new_email : EmailStr = Form(...), Token : str = Header(...)):
     token_data = token.decode_token(Token)
-    crud.update_customer_email(db, token_data["customer_id"], new_email)
+    crud.update_User_email(db, token_data["User_id"], new_email)
     return {
         "message" : "email updated successfuly"
     }
 
-@app.put("/update_customer_password", tags=["customer"])
-async def update_customer_password(db : session = Depends(get_DB), new_password : str = Form(...), Token : str = Header(...)):
+@app.put("/update_User_password", tags=["User"])
+async def update_User_password(db : session = Depends(get_DB), new_password : str = Form(...), Token : str = Header(...)):
     token_data = token.decode_token(Token)
-    crud.update_customer_password(db, token_data["customer_id"], new_password)
+    crud.update_User_password(db, token_data["User_id"], new_password)
     return {
         "message" : "password updated successfuly"
     }
 
 
-@app.delete("/delete_customer", tags=["customer"])
-async def delete_customer(db : session = Depends(get_DB), Token : str = Header(...)):
+@app.delete("/delete_User", tags=["User"])
+async def delete_User(db : session = Depends(get_DB), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     if not token_data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid token")
-    customer_id = token_data["customer_id"]
-    crud.delete_customer(db, customer_id)
+    User_id = token_data["User_id"]
+    crud.delete_User(db, User_id)
 
+
+
+@app.post("/create_question", tags=["Question"])
+async def create_question(question : schemas.QuestionIn, db : session = Depends(get_DB), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    user_id = data["User_id"]
+    crud.create_question(db, user_id, question)
+    return {
+        "message" : "success"
+    }

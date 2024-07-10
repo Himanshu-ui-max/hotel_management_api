@@ -1,5 +1,29 @@
 from pydantic import BaseModel, EmailStr
 
+class AnswerBase(BaseModel):
+    answer : str
+
+class AnswerDB(AnswerBase):
+    id : int
+    owner_id : int
+    question_id : int
+
+class AnswerIn(AnswerBase):
+    owner_id : str
+    question_id : int
+
+
+class QuestionBase(BaseModel):
+    title : str
+    Question : str
+    tags : list[str] | None = None
+
+class QuestionDB(QuestionBase):
+    owner_id : int
+    answers : list[AnswerDB] | None = None
+
+class QuestionIn(QuestionBase):
+    pass
 
 class login(BaseModel):
     email : EmailStr
@@ -22,21 +46,22 @@ class AdminDB(AdminBase):
 
     class Config:
         from_attributes = True
-class CustomerBase(BaseModel):
+class UserBase(BaseModel):
     name : str
     email : EmailStr
     
 
-class CustomerIn(CustomerBase):
+class UserIn(UserBase):
     password : str
 
-class CustomerOut(CustomerBase):
+class UserOut(UserBase):
     pass
 
-class CustomerDB(CustomerBase):
+class UserDB(UserBase):
     id : int | None  = None
     hashed_password : str
-    booking : int | None = None
+    questions : list[QuestionDB]
+    answers : list[AnswerDB]
     class Config:
         from_attributes = True
 
