@@ -1,3 +1,5 @@
+from fastapi import HTTPException, status
+
 from sqlalchemy import delete
 from sqlalchemy.orm import session
 from . import schemas, models, database, hashing
@@ -98,6 +100,7 @@ def get_questions_by_title(db : session, title: str):
     for question in questions_db:
         if nlp(question.title).similarity(nlp(title)) >= 0.4:            
             data = {
+                "id" : question.id,
                 "title" : question.title,
                 "question" : question.question,
                 "tags" : question.tags.split(",")
@@ -119,6 +122,7 @@ def get_question_by_tags(db : session, tags : list[str]):
     for question in questions_db:
         if(nlp(tags_str).similarity(nlp(question.tags)) >= 0.4):
             data = {
+                "id" : question.id,
                 "title" : question.title,
                 "question" : question.question,
                 "tags" : question.tags.split(",")
@@ -126,6 +130,35 @@ def get_question_by_tags(db : session, tags : list[str]):
             to_return.append(data)
     return to_return
 
+
+def edit_question(db : session, user_id : int, ques_id : int, question : schemas.QuestionIn):
+    question_data = db.query(models.Question).filter(models.Question.id == ques_id).first()
+    owner_id = question_data.owner_id
+    if user_id != owner_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unauthorised to edit this question")
+    tags_str = ""
+    for i in range(0, len(question.tags)):
+        if i == len(question.tags) - 1:
+            tags_str += question.tags[i]
+            break
+        tags_str += (question.tags[i] + ",")
+    db.query(models.Question).filter(models.Question.id == ques_id).update({
+        models.Question.title : question.title,
+        models.Question.question : question.Question,
+        models.Question.tags : tags_str
+        })
+    db.commit()
+
+
+def delete_question(db : session, user_id : int, ques_id : int):
+    question_data = db.query(models.Question).filter(models.Question.id == ques_id).first()
+    owner_id = question_data.owner_id
+    if user_id != owner_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unauthorised to edit this question")
+    db.query(models.Answer).filter(models.Answer.question_id == ques_id).delete()
+    db.commit()
+    db.query(models.Question).filter(models.Question.id == ques_id).delete()
+    db.commit()
 
 def get_ans_by_que_id(db : session, que_id: int):
     answers = db.query(models.Answer).filter(models.Answer.question_id == que_id).all()

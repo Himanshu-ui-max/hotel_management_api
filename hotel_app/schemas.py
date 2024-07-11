@@ -27,7 +27,7 @@ class QuestionDB(QuestionBase):
 class QuestionIn(QuestionBase):
     pass
 class QuestionOut(QuestionBase):
-    pass
+    id : int
 
 class login(BaseModel):
     email : EmailStr

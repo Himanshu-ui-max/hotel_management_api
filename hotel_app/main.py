@@ -130,7 +130,7 @@ async def create_question(question : schemas.QuestionIn, db : session = Depends(
     }
 
 
-@app.post("/create_answer", tags=["Question"])
+@app.post("/create_answer", tags=["Answer"])
 async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB), Token : str = Header(...)):
     data = token.decode_token(Token)
     user_id = data["User_id"]
@@ -145,10 +145,31 @@ async def get_question_by_title(title : str, db : session = Depends(get_DB)):
     return questions
 
 @app.get("/get_questions_by_tags", tags=["Question"], response_model=list[schemas.QuestionOut])
-async def get_question_bt_tags(tags : list[str] = Query(...), db : session = Depends(get_DB)):
+async def get_question_by_tags(tags : list[str] = Query(...), db : session = Depends(get_DB)):
     questions = crud.get_question_by_tags(db, tags)
     return questions
+
+
+@app.put("/edit_question", tags=["Question"])
+async def edit_question(question : schemas.QuestionIn, db : session = Depends(get_DB), ques_id : int = Query(...), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    user_id = data["User_id"]
+    crud.edit_question(db, user_id, ques_id, question)
+    return {
+        "message" : "question edited successfuly"
+    }
+
+@app.delete("/delete_question", tags=["Question"])
+async def delete_question(db : session = Depends(get_DB), ques_id : int = Query(...), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    user_id = data["User_id"]
+    crud.delete_question(db, user_id, ques_id)
+    return {
+        "message" : "question deleted successfuly"
+    }
 
 @app.get("/get_answers_by_question_id", tags=["Answer"], response_model=list[schemas.AnswerOut])
 async def get_answers_by_Question_id(que_id : int = Query(...), db : session = Depends(get_DB)):
     return crud.get_ans_by_que_id(db, que_id)
+
+
