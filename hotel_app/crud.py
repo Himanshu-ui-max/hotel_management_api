@@ -55,6 +55,11 @@ def update_User_password(db : session, User_id : int, new_password : str):
     db.query(models.User).filter(models.User.id == User_id).update({models.User.hashed_password : new_hashed_password})
     db.commit()
 
+
+def update_User_name(db : session, User_id : int, new_name : str):
+    db.query(models.User).filter(models.User.id == User_id).update({models.User.name : new_name})
+    db.commit()
+
 def get_User(db: session, email : str)->models.User | bool:
     User = db.query(models.User).filter(models.User.email == email).first()
     if not User:
@@ -91,7 +96,7 @@ def get_questions_by_title(db : session, title: str):
     questions_db = db.query(models.Question).all()
     to_return : list[dict] = []
     for question in questions_db:
-        if nlp(question.title).similarity(nlp(title)) >= 0.5:            
+        if nlp(question.title).similarity(nlp(title)) >= 0.4:            
             data = {
                 "title" : question.title,
                 "question" : question.question,
@@ -99,3 +104,41 @@ def get_questions_by_title(db : session, title: str):
             }
             to_return.append(data)
     return to_return
+
+
+
+def get_question_by_tags(db : session, tags : list[str]):
+    tags_str = ""
+    for i in range(0, len(tags)):
+        if i == len(tags) - 1:
+            tags_str += tags[i]
+            break
+        tags_str += (tags[i]+',')
+    questions_db = db.query(models.Question).all()
+    to_return : list[dict] = []
+    for question in questions_db:
+        if(nlp(tags_str).similarity(nlp(question.tags)) >= 0.4):
+            data = {
+                "title" : question.title,
+                "question" : question.question,
+                "tags" : question.tags.split(",")
+            }
+            to_return.append(data)
+    return to_return
+
+
+def get_ans_by_que_id(db : session, que_id: int):
+    answers = db.query(models.Answer).filter(models.Answer.question_id == que_id).all()
+    to_return : list[dict] = []
+    for answer in  answers:
+        owner_name = db.query(models.User).filter(models.User.id == answer.owner_id).first().name
+        data = {
+            "owner_name" : owner_name,
+            "answer" : answer.answer
+        }
+        to_return.append(data)
+
+    return to_return
+
+
+        

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Header, Form
+from fastapi import FastAPI, Depends, HTTPException, status, Header, Form, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import EmailStr
 from sqlalchemy.orm import session
@@ -98,6 +98,13 @@ async def update_User_password(db : session = Depends(get_DB), new_password : st
     return {
         "message" : "password updated successfuly"
     }
+@app.put("/update_User_name", tags=["User"])
+async def update_User_name(db : session = Depends(get_DB), new_name : str = Form(...), Token : str = Header(...)):
+    token_data = token.decode_token(Token)
+    crud.update_User_name(db, token_data["User_id"], new_name)
+    return {
+        "message" : "name updated successfuly"
+    }
 
 
 @app.delete("/delete_User", tags=["User"])
@@ -132,7 +139,16 @@ async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB
         "message" : "success"
     }
 
-@app.get("/get_question_by_title", tags = ["Question"])
+@app.get("/get_question_by_title", tags = ["Question"], response_model=list[schemas.QuestionOut])
 async def get_question_by_title(title : str, db : session = Depends(get_DB)):
-    answers = crud.get_questions_by_title(db, title)
-    return answers
+    questions = crud.get_questions_by_title(db, title)
+    return questions
+
+@app.get("/get_questions_by_tags", tags=["Question"], response_model=list[schemas.QuestionOut])
+async def get_question_bt_tags(tags : list[str] = Query(...), db : session = Depends(get_DB)):
+    questions = crud.get_question_by_tags(db, tags)
+    return questions
+
+@app.get("/get_answers_by_question_id", tags=["Answer"], response_model=list[schemas.AnswerOut])
+async def get_answers_by_Question_id(que_id : int = Query(...), db : session = Depends(get_DB)):
+    return crud.get_ans_by_que_id(db, que_id)

@@ -12,6 +12,9 @@ class AnswerIn(AnswerBase):
     question_id : int
 
 
+class AnswerOut(AnswerBase):
+    owner_name : str
+
 class QuestionBase(BaseModel):
     title : str
     Question : str
@@ -22,6 +25,8 @@ class QuestionDB(QuestionBase):
     answers : list[AnswerDB] | None = None
 
 class QuestionIn(QuestionBase):
+    pass
+class QuestionOut(QuestionBase):
     pass
 
 class login(BaseModel):
