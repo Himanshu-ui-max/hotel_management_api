@@ -69,6 +69,9 @@ def get_User(db: session, email : str)->models.User | bool:
     return User
 
 def delete_User(db : session, User_id : int):
+    is_user = db.query(models.User).filter(models.User.id == User_id).first()
+    if  not is_user:
+        raise HTTPException(status_code=404, detail="User not found")
     db.query(models.User).filter(models.User.id == User_id).delete()
     db.commit()
 
