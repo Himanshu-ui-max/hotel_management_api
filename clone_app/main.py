@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Header, Form, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Header, Form, Query, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import EmailStr
 from sqlalchemy.orm import session
@@ -130,14 +130,6 @@ async def create_question(question : schemas.QuestionIn, db : session = Depends(
     }
 
 
-@app.post("/create_answer", tags=["Answer"])
-async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB), Token : str = Header(...)):
-    data = token.decode_token(Token)
-    user_id = data["User_id"]
-    crud.create_answer(db, user_id, answer)
-    return {
-        "message" : "success"
-    }
 
 @app.get("/get_question_by_title", tags = ["Question"], response_model=list[schemas.QuestionOut])
 async def get_question_by_title(title : str, db : session = Depends(get_DB)):
@@ -167,9 +159,34 @@ async def delete_question(db : session = Depends(get_DB), ques_id : int = Query(
     return {
         "message" : "question deleted successfuly"
     }
+@app.post("/create_answer", tags=["Answer"])
+async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    user_id = data["User_id"]
+    crud.create_answer(db, user_id, answer)
+    return {
+        "message" : "success"
+    }
 
 @app.get("/get_answers_by_question_id", tags=["Answer"], response_model=list[schemas.AnswerOut])
 async def get_answers_by_Question_id(que_id : int = Query(...), db : session = Depends(get_DB)):
     return crud.get_ans_by_que_id(db, que_id)
 
 
+@app.put("/edit_answer", tags=["Answer"])
+async def edit_answer(db : session = Depends(get_DB), ans_id : int = Query(...), Token : str = Header(...), new_answer : schemas.AnswerBase = Body(...)):
+    data = token.decode_token(Token)
+    user_id = data["User_id"]
+    crud.edit_answer(db,user_id,ans_id,new_answer.answer)
+    return {
+        "message" : "answer  edited successfuly"
+    }
+
+@app.delete("/delete_answer", tags=["Answer"])
+async def delete_answer(answer_id : int = Query(...), db : session = Depends(get_DB), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    user_id = data["User_id"]
+    crud.delete_answer(db, user_id, answer_id)
+    return {
+        "message" : "Answer deleted Successfuly"
+    }

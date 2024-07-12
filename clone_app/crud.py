@@ -88,23 +88,19 @@ def create_question(db : session, user_id : int, question : schemas.QuestionIn):
     db.refresh(question_db)
 
 
-def create_answer(db : session, user_id : int, answer : schemas.AnswerIn):
-    answer_db = models.Answer(answer = answer.answer, question_id = answer.question_id, owner_id = user_id)
-    db.add(answer_db)
-    db.commit()
-    db.refresh(answer_db)
 
 def get_questions_by_title(db : session, title: str):
     questions_db = db.query(models.Question).all()
-    to_return : list[dict] = []
+    to_return : list[schemas.QuestionOut] = []
     for question in questions_db:
         if nlp(question.title).similarity(nlp(title)) >= 0.4:            
             data = {
                 "id" : question.id,
                 "title" : question.title,
-                "question" : question.question,
+                "Question" : question.question,
                 "tags" : question.tags.split(",")
             }
+            data = schemas.QuestionOut(**data)
             to_return.append(data)
     return to_return
 
@@ -124,15 +120,29 @@ def get_question_by_tags(db : session, tags : list[str]):
             data = {
                 "id" : question.id,
                 "title" : question.title,
-                "question" : question.question,
+                "Question" : question.question,
                 "tags" : question.tags.split(",")
             }
+            data = schemas.QuestionOut(**data)
             to_return.append(data)
     return to_return
 
+def delete_question(db : session, user_id : int, ques_id : int):
+    question_data = db.query(models.Question).filter(models.Question.id == ques_id).first()
+    if not question_data:
+        raise HTTPException(status_code=404, detail="Question not found")
+    owner_id = question_data.owner_id
+    if user_id != owner_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unauthorised to delete this question")
+    db.query(models.Answer).filter(models.Answer.question_id == ques_id).delete()
+    db.commit()
+    db.query(models.Question).filter(models.Question.id == ques_id).delete()
+    db.commit()
 
 def edit_question(db : session, user_id : int, ques_id : int, question : schemas.QuestionIn):
     question_data = db.query(models.Question).filter(models.Question.id == ques_id).first()
+    if not question_data:
+        raise HTTPException(status_code=404, detail="question not found")
     owner_id = question_data.owner_id
     if user_id != owner_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unauthorised to edit this question")
@@ -149,16 +159,15 @@ def edit_question(db : session, user_id : int, ques_id : int, question : schemas
         })
     db.commit()
 
+def create_answer(db : session, user_id : int, answer : schemas.AnswerIn):
+    is_answer = db.query(models.Answer).filter(models.Answer.question_id == answer.question_id).filter(models.Answer.owner_id == user_id).first()
+    if is_answer:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already answered the question")
+    answer_db = models.Answer(answer = answer.answer, question_id = answer.question_id, owner_id = user_id)
+    db.add(answer_db)
+    db.commit()
+    db.refresh(answer_db)
 
-def delete_question(db : session, user_id : int, ques_id : int):
-    question_data = db.query(models.Question).filter(models.Question.id == ques_id).first()
-    owner_id = question_data.owner_id
-    if user_id != owner_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unauthorised to edit this question")
-    db.query(models.Answer).filter(models.Answer.question_id == ques_id).delete()
-    db.commit()
-    db.query(models.Question).filter(models.Question.id == ques_id).delete()
-    db.commit()
 
 def get_ans_by_que_id(db : session, que_id: int):
     answers = db.query(models.Answer).filter(models.Answer.question_id == que_id).all()
@@ -173,5 +182,22 @@ def get_ans_by_que_id(db : session, que_id: int):
 
     return to_return
 
+def edit_answer(db : session, user_id : int, ans_id : int , new_answer : str):
+    answer_db = db.query(models.Answer).filter(models.Answer.id == ans_id).first()
+    if not answer_db:
+        raise HTTPException(status_code=404, detail="Answer not found")
+    if user_id != answer_db.owner_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not authorised to edit this answer")
+    db.query(models.Answer).filter(models.Answer.id == ans_id).update({models.Answer.answer : new_answer})
+    db.commit()
 
-        
+def delete_answer(db : session, user_id : int, answer_id : int):
+    answer_data = db.query(models.Answer).filter(models.Answer.id == answer_id).first()
+    if not answer_data:
+        raise HTTPException(status_code=404, detail="Answer not found")
+    if user_id != answer_data.owner_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unauthorised to delete this question")
+    db.query(models.Answer).filter(models.Answer.id == answer_id).delete()
+    db.commit()
+
+
