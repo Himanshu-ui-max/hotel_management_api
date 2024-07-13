@@ -83,10 +83,10 @@ async def login(db: session = Depends(get_DB), email : EmailStr = Form(...), pas
             return jwt_token
         else:
             User_db = crud.get_User(db, email)
-            if not User_db.is_verified:
-                raise HTTPException(status_code=400, detail="User not verified")
             if not User_db:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
+            if not User_db.is_verified:
+                raise HTTPException(status_code=400, detail="User not verified")
             if not hashing.verify_password(password, User_db.hashed_password):
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
             data = {
