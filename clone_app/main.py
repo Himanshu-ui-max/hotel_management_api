@@ -21,6 +21,9 @@ def get_DB():
 async def email_verification(Token : str = Path(...), db : session = Depends(get_DB)):
     data = token.decode_token(Token)
     user_id = data["User_id"]
+    user_db = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user_db:
+        raise HTTPException(status_code=404, detail="user not found")
     db.query(models.User).filter(models.User.id == user_id).update({models.User.is_verified : True})
     db.commit()
     response = """
@@ -37,7 +40,7 @@ async def email_verification(Token : str = Path(...), db : session = Depends(get
     return HTMLResponse(content=response, status_code=200)
 
 
-@app.get("/email_verification_revoked/{email}", tags=["Email service"])
+@app.get("/email_verification_revoke/{email}", tags=["Email service"])
 async def email_verification_revoke(email : EmailStr, db : session = Depends(get_DB)):
     try:
         User_db = db.query(models.User).filter(models.User.email == email).first()
@@ -340,3 +343,4 @@ async def delete_answer(answer_id : int = Query(...), db : session = Depends(get
         }
     except:
         raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+    
