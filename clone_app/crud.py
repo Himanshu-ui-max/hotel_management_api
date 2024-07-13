@@ -210,16 +210,12 @@ def get_questions_by_title(db : session, title: str):
 
 
 def get_question_by_tags(db : session, tags : list[str]):
-    tags_str = ""
-    for i in range(0, len(tags)):
-        if i == len(tags) - 1:
-            tags_str += tags[i]
-            break
-        tags_str += (tags[i]+',')
-    questions_db = db.query(models.Question).all()
+    que_db = db.query(models.Question)
+    for tag in tags:
+        que_db = que_db.filter(models.Question.tags.like(f"%{tag}%"))
+        print(que_db)
     to_return : list[dict] = []
-    for question in questions_db:
-        if(nlp(tags_str).similarity(nlp(question.tags)) >= 0.4):
+    for question in que_db.all():
             data = {
                 "id" : question.id,
                 "title" : question.title,

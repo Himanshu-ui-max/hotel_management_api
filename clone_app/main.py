@@ -268,11 +268,8 @@ async def get_question_by_title(title : str, db : session = Depends(get_DB)):
 
 @app.get("/get_questions_by_tags", tags=["Question"], response_model=list[schemas.QuestionOut])
 async def get_question_by_tags(tags : list[str] = Query(...), db : session = Depends(get_DB)):
-    try:
         questions = crud.get_question_by_tags(db, tags)
         return questions
-    except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
 
 
 @app.put("/edit_question", tags=["Question"])
