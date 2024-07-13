@@ -1,9 +1,27 @@
 from fastapi import HTTPException, status
-
+from pydantic import EmailStr
 from sqlalchemy import delete
 from sqlalchemy.orm import session
 from . import schemas, models, database, hashing
 import spacy
+from fastapi_mail import FastMail, ConnectionConfig, MessageSchema
+from dotenv import dotenv_values
+import random
+
+
+env_values = dotenv_values(".env")
+env_values = dict(env_values)
+config = ConnectionConfig(
+    MAIL_USERNAME =env_values["USER"],
+    MAIL_PASSWORD = env_values["PASSWORD"],
+    MAIL_FROM = env_values["USER"],
+    MAIL_PORT = 587,
+    MAIL_SERVER = "smtp.gmail.com",
+    MAIL_STARTTLS = True,
+    MAIL_SSL_TLS = False,
+    USE_CREDENTIALS = True,
+    VALIDATE_CERTS = True
+)
 
 nlp = spacy.load("en_core_web_lg")
 
@@ -41,12 +59,41 @@ def delete_admin(db : session, admin_id : int):
 def create_User(db:session, User : schemas.UserIn):
     password = User.password
     hashed = hashing.hash_password(password)
-    data_db = models.User(name = User.name, email = User.email, hashed_password = hashed)
+    data_db = models.User(name = User.name, email = User.email, hashed_password = hashed, is_verified = False, otp = 0)
     print(data_db)
     db.add(data_db)
     db.commit()
     db.refresh(data_db)
     return schemas.UserOut(**User.dict())
+
+async def send_verification_mail(token : str, user_mail : EmailStr):
+    template = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <title>mail service</title>
+        </head>
+        <body>
+            <p>Sign up process invoked <a href="http://localhost:8000/email_verification/{token}">click here</a> to verify</p>
+            <p> <b>NOT YOU </b><a href="http://localhost:8000/email_verification_revoke/{user_mail}">click here</a> to revoke</p>
+        </body>
+        </html>
+
+    """
+    message = MessageSchema(
+       subject="Email verification for stackoverflow clone",
+       recipients=[user_mail],  # List of recipients, as many as you can pass  
+       body = template,
+       subtype="html"
+       )
+    try:
+        print("working")
+        fm = FastMail(config=config)
+        await fm.send_message(message)
+        return True
+    except:
+        print("message not sent")
+        return False
 
 def update_User_email(db : session, User_id : int, new_email : str):
     db.query(models.User).filter(models.User.id == User_id).update({models.User.email : new_email})
@@ -62,7 +109,55 @@ def update_User_name(db : session, User_id : int, new_name : str):
     db.query(models.User).filter(models.User.id == User_id).update({models.User.name : new_name})
     db.commit()
 
-def get_User(db: session, email : str)->models.User | bool:
+async def forget_password_otp_generation(user_mail : EmailStr, db : session)->bool:
+    print("working")
+    user_db = db.query(models.User).filter(models.User.email == user_mail).first()
+    if not user_db:
+        raise HTTPException(status_code=404, detail="User not found")
+    otp = random.randint(100000, 999999)
+    db.query(models.User).filter(models.User.email == user_mail).update({models.User.otp : otp})
+    db.commit()
+    template = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <title>mail service</title>
+        </head>
+        <body>
+            <p>otp to reset passwoed is {otp}</p>
+        </body>
+        </html>
+    """
+    message = MessageSchema(
+       subject="OTP to reset password",
+       recipients=[user_mail],  # List of recipients, as many as you can pass  
+       body = template,
+       subtype="html"
+       )
+    try:
+        fm = FastMail(config=config)
+        await fm.send_message(message=message)
+        return True
+    except:
+        return False
+    
+def forget_password_otp_validation(db : session, user_mail : EmailStr, otp : int, new_password):
+    user_db = db.query(models.User).filter(models.User.email == user_mail).first()
+    if not user_db:
+        raise HTTPException(status_code=404, detail="user not found")
+    if otp != user_db.otp:
+        raise HTTPException(status_code=400, detail="invalid OTP")
+    new_hashed_password = hashing.hash_password(new_password)
+    db.query(models.User).filter(models.User.email == user_mail).update({
+        models.User.hashed_password : new_hashed_password,
+        models.User.otp : 0
+    })
+    db.commit()
+    return {
+        "message" :"password reset succesfull"
+    }
+
+def get_User(db: session, email : str) -> models.User | bool:
     User = db.query(models.User).filter(models.User.email == email).first()
     if not User:
         return False
@@ -73,6 +168,11 @@ def delete_User(db : session, User_id : int):
     if  not is_user:
         raise HTTPException(status_code=404, detail="User not found")
     db.query(models.User).filter(models.User.id == User_id).delete()
+    user_questions = db.query(models.Question).filter(models.Question.owner_id == User_id).all()
+    for question in user_questions:
+        question_id = question.id
+        db.query(models.Answer).filter(models.Answer.question_id == question_id).delete()
+    db.query(models.Question).filter(models.Question.owner_id == User_id).delete()
     db.commit()
 
 

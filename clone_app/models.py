@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
 from .database import Base 
@@ -23,6 +23,8 @@ class User(Base):
     name = Column(String)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    is_verified = Column(Boolean)
+    otp = Column(Integer)
 
     answers = relationship("Answer", back_populates="owner")
     questions = relationship("Question", back_populates="owner")

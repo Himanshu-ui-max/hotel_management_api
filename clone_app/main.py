@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Header, Form, Query, Body
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import FastAPI, Depends, HTTPException, status, Header, Form, Query, Body, Path
+from fastapi.responses import HTMLResponse, Response
 from pydantic import EmailStr
 from sqlalchemy.orm import session
-from . import crud, schemas, hashing, token
+from . import crud, schemas, hashing, token, models
 from .database import session_local, engine, Base
 app = FastAPI(title="HIMS' Stackoverflow")
 
@@ -17,31 +17,84 @@ def get_DB():
 
 
 
+@app.get("/email_verification/{Token}", tags=["Email service"])
+async def email_verification(Token : str = Path(...), db : session = Depends(get_DB)):
+    data = token.decode_token(Token)
+    user_id = data["User_id"]
+    db.query(models.User).filter(models.User.id == user_id).update({models.User.is_verified : True})
+    db.commit()
+    response = """
+    <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <title>email verification sucessful</title>
+        </head>
+        <body>
+            email verified successfuly you can log in now
+        </body>
+        </html>
+    """
+    return HTMLResponse(content=response, status_code=200)
+
+
+@app.get("/email_verification_revoked/{email}", tags=["Email service"])
+async def email_verification_revoke(email : EmailStr, db : session = Depends(get_DB)):
+    try:
+        User_db = db.query(models.User).filter(models.User.email == email).first()
+        if not User_db:
+            raise HTTPException(status_code=404, detail="User not found")
+        if User_db.is_verified:
+            raise HTTPException(status_code=400, detail="User already verified")
+        db.query(models.User).filter(models.User.email == email).delete()
+        db.commit()
+        response = """
+        <!DOCTYPE html>
+            <html lang="en">
+            <head>
+            <title>email verification sucessful</title>
+            </head>
+            <body>
+                email registration revoked successfuly
+            </body>
+            </html>
+        """
+        return HTMLResponse(content=response, status_code=200)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        return e
 
 @app.post("/login", tags=["admin", "User"])
 async def login(db: session = Depends(get_DB), email : EmailStr = Form(...), password : str = Form(...), isAdmin : bool = Form(...)):
-    if isAdmin:
-        admin_db = crud.get_admin(db, email)
-        if not admin_db:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
-        if not hashing.verify_password(password, admin_db.hashed_password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
-        data = {
-            "admin_id" : admin_db.id
-        }
-        jwt_token = token.encode_token(data)
-        return jwt_token
-    else:
-        User_db = crud.get_User(db, email)
-        if not User_db:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
-        if not hashing.verify_password(password, User_db.hashed_password):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
-        data = {
-            "User_id" : User_db.id
-        }
-        jwt_token = token.encode_token(data)
-        return jwt_token
+    try:
+        if isAdmin:
+            admin_db = crud.get_admin(db, email)
+            if not admin_db:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
+            if not hashing.verify_password(password, admin_db.hashed_password):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
+            data = {
+                "admin_id" : admin_db.id
+            }
+            jwt_token = token.encode_token(data)
+            return jwt_token
+        else:
+            User_db = crud.get_User(db, email)
+            if not User_db.is_verified:
+                raise HTTPException(status_code=400, detail="User not verified")
+            if not User_db:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
+            if not hashing.verify_password(password, User_db.hashed_password):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
+            data = {
+                "User_id" : User_db.id
+            }
+            jwt_token = token.encode_token(data)
+            return jwt_token
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        return e
 
 @app.post("/create_admin", response_model=schemas.AdminOut, tags=["admin"])
 async def create_admin(admin : schemas.AdminIn, db : session = Depends(get_DB)):
@@ -92,17 +145,37 @@ async def delete_admin(db : session = Depends(get_DB), Token : str = Header(...)
     except:
         raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
 
-@app.post("/create_User", response_model=schemas.AdminOut, tags=["User"])
-async def create_User(User : schemas.UserIn, db : session = Depends(get_DB)):
+@app.post("/create_User", tags=["User"])
+async def create_User(User: schemas.UserIn, db: session = Depends(get_DB)):
     try:
-        User_db = crud.get_User(db,User.email)
+        User_db = crud.get_User(db, User.email)
         if User_db:
             raise HTTPException(status_code=400, detail="User already exists")
+        
         if crud.get_admin(db, User.email):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin can not be a User")
-        return crud.create_User(db, User)
-    except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin cannot be a User")
+        
+        crud.create_User(db, User)
+        User_db = db.query(models.User).filter(models.User.email == User.email).first()
+        data = {
+            "User_id": User_db.id
+        }
+        jwt_token = token.encode_token(data)
+        
+        if await crud.send_verification_mail(jwt_token, User.email):
+            return {
+                "message": "Verification mail sent successfully"
+            }
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Some internal error occurred")
+    except HTTPException as e:
+        # Catch specific HTTPExceptions and re-raise them
+        raise e
+    except Exception as e:
+        # Log the exception details for debugging purposes
+        print(f"Unexpected error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Some internal error occurred")
+
 
 @app.put("/update_User_email", tags=["User"])
 async def update_User_Email(db : session = Depends(get_DB), new_email : EmailStr = Form(...), Token : str = Header(...)):
@@ -136,6 +209,18 @@ async def update_User_name(db : session = Depends(get_DB), new_name : str = Form
     except:
         raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
 
+
+@app.post("/forget_password_otp_generation", tags=["User"])
+async def forget_password_otp_generation(user_mail : EmailStr, db : session  =Depends(get_DB)):
+    if await crud.forget_password_otp_generation(user_mail,db):
+        return {
+            "message" : "otp sent to your mail successfuly"
+        }
+    raise HTTPException(status_code=500, detail="some internal error occured")
+
+@app.post("/forget_password_otp_validation", tags=["User"])
+async def forget_password_otp_validation(user_mail : EmailStr = Form(...), otp : int = Form(...), new_password : str = Form(...), db : session = Depends(get_DB)):
+    return crud.forget_password_otp_validation(db, user_mail, otp, new_password)
 
 @app.delete("/delete_User", tags=["User"])
 async def delete_User(db : session = Depends(get_DB), Token : str = Header(...)):
