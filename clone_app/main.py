@@ -285,6 +285,16 @@ async def get_question(db: session = Depends(get_DB), pagenumber : int = Query(.
     except:
         raise HTTPException(status_code=500, detail="some internal error occured")
 
+@app.get("/get_question_by_id", tags=["Question"], response_model=schemas.QuestionOut)
+async def get_question_by_id(db : session = Depends(get_DB), que_id : int = Query(...)):
+    try:
+        return crud.get_question_by_id(db, que_id)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
+    
+
 @app.get("/get_question_by_title", tags = ["Question"], response_model=list[schemas.QuestionOut])
 async def get_question_by_title(title : str, db : session = Depends(get_DB)):
     try:
@@ -345,6 +355,18 @@ async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB
     except HTTPException as e:
         raise e
     except:
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
+
+@app.get("/get_user_answers", tags=["Answer"], response_model=list[schemas.AnswerOut])
+async def get_user_answers(db : session = Depends(get_DB), Token : str = Header(...)):
+    try:
+        data = token.decode_token(Token)
+        user_id = data["User_id"]
+        return crud.get_user_answers(db, user_id)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 @app.get("/get_answers_by_question_id", tags=["Answer"], response_model=list[schemas.AnswerOut])

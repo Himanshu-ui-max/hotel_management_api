@@ -206,6 +206,19 @@ def get_questions(db : session, start : int, end : int):
         to_return.append(data)
     return to_return
 
+def get_question_by_id(db : session, que_id : int):
+    question = db.query(models.Question).filter(models.Question.id == que_id).first()
+    if not question:
+        raise HTTPException(404, "Question not found")
+    data = {
+        "id" : question.id,
+        "title" : question.title,
+        "Question" : question.question,
+        "tags" : question.tags.split(",")
+    }
+    return schemas.QuestionOut(**data)
+
+
 def get_questions_by_title(db : session, title: str):
     questions_db = db.query(models.Question).all()
     to_return : list[schemas.QuestionOut] = []
@@ -282,19 +295,33 @@ def create_answer(db : session, user_id : int, answer : schemas.AnswerIn):
     db.refresh(answer_db)
 
 
-def get_ans_by_que_id(db : session, que_id: int):
-    answers = db.query(models.Answer).filter(models.Answer.question_id == que_id).all()
-    print(answers)
-    to_return : list[dict] = []
+def get_user_answers(db : session, user_id):
+    answers = db.query(models.Answer).filter(models.Answer.owner_id == user_id).all()
+    to_return : list[schemas.AnswerOut] = []
     for answer in  answers:
-        print(answer.owner_id)
         owner_name = db.query(models.User).filter(models.User.id == answer.owner_id).first().name
         data = {
             "id" : answer.id,
             "owner_name" : owner_name,
-            "answer" : answer.answer
+            "answer" : answer.answer,
+            "question_id" : answer.question_id
         }
-        to_return.append(data)
+        to_return.append(schemas.AnswerOut(**data))
+
+    return to_return
+
+def get_ans_by_que_id(db : session, que_id: int):
+    answers = db.query(models.Answer).filter(models.Answer.question_id == que_id).all()
+    to_return : list[schemas.AnswerOut] = []
+    for answer in  answers:
+        owner_name = db.query(models.User).filter(models.User.id == answer.owner_id).first().name
+        data = {
+            "id" : answer.id,
+            "owner_name" : owner_name,
+            "answer" : answer.answer,
+            "question_id" : answer.question_id
+        }
+        to_return.append(schemas.AnswerOut(**data))
 
     return to_return
 

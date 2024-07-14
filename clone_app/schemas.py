@@ -17,7 +17,9 @@ class AnswerIn(AnswerBase):
 
 
 class AnswerOut(AnswerBase):
+    id : int
     owner_name : str
+    question_id : int
 
 class QuestionBase(BaseModel):
     title : str
