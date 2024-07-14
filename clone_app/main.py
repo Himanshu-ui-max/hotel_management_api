@@ -106,11 +106,14 @@ async def create_admin(admin : schemas.AdminIn, db : session = Depends(get_DB)):
         if admin_db:
             raise HTTPException(status_code=400, detail="User already exists")
         return crud.create_admin(db, admin)
-    except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 
-@app.put("/update_admin_email", tags=["admin"])
+@app.put("/update_admin_email", tags=["admin"], response_model= schemas.successResponse)
 async def update_admin_email(db : session = Depends(get_DB), new_email : EmailStr = Form(...), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     try:
@@ -118,12 +121,14 @@ async def update_admin_email(db : session = Depends(get_DB), new_email : EmailSt
         return {
             "message" : "email updated successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 
 
-@app.put("/update_admin_password", tags=["admin"])
+@app.put("/update_admin_password", tags=["admin"], response_model= schemas.successResponse)
 async def update_admin_email(db : session = Depends(get_DB), new_password : str = Form(...), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     try:
@@ -131,10 +136,12 @@ async def update_admin_email(db : session = Depends(get_DB), new_password : str 
         return {
             "message" : "password updated successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
-@app.delete("/delete_admin", tags=["admin"])
+@app.delete("/delete_admin", tags=["admin"], response_model= schemas.successResponse)
 async def delete_admin(db : session = Depends(get_DB), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     if "User_id" in token_data.keys():
@@ -145,10 +152,12 @@ async def delete_admin(db : session = Depends(get_DB), Token : str = Header(...)
         return {
             "message" : "Admin deleted successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
-@app.post("/create_User", tags=["User"])
+@app.post("/create_User", tags=["User"], response_model= schemas.successResponse)
 async def create_User(User: schemas.UserIn, db: session = Depends(get_DB)):
     try:
         User_db = crud.get_User(db, User.email)
@@ -180,7 +189,7 @@ async def create_User(User: schemas.UserIn, db: session = Depends(get_DB)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Some internal error occurred")
 
 
-@app.put("/update_User_email", tags=["User"])
+@app.put("/update_User_email", tags=["User"], response_model= schemas.successResponse)
 async def update_User_Email(db : session = Depends(get_DB), new_email : EmailStr = Form(...), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     try:
@@ -188,10 +197,12 @@ async def update_User_Email(db : session = Depends(get_DB), new_email : EmailStr
         return {
             "message" : "email updated successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
-@app.put("/update_User_password", tags=["User"])
+@app.put("/update_User_password", tags=["User"], response_model= schemas.successResponse)
 async def update_User_password(db : session = Depends(get_DB), new_password : str = Form(...), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     try:
@@ -199,9 +210,11 @@ async def update_User_password(db : session = Depends(get_DB), new_password : st
         return {
             "message" : "password updated successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
-@app.put("/update_User_name", tags=["User"])
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
+@app.put("/update_User_name", tags=["User"], response_model= schemas.successResponse)
 async def update_User_name(db : session = Depends(get_DB), new_name : str = Form(...), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     try:
@@ -209,11 +222,13 @@ async def update_User_name(db : session = Depends(get_DB), new_name : str = Form
         return {
             "message" : "name updated successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 
-@app.post("/forget_password_otp_generation", tags=["User"])
+@app.post("/forget_password_otp_generation", tags=["User"], response_model= schemas.successResponse)
 async def forget_password_otp_generation(user_mail : EmailStr, db : session  =Depends(get_DB)):
     if await crud.forget_password_otp_generation(user_mail,db):
         return {
@@ -221,11 +236,14 @@ async def forget_password_otp_generation(user_mail : EmailStr, db : session  =De
         }
     raise HTTPException(status_code=500, detail="some internal error occured")
 
-@app.post("/forget_password_otp_validation", tags=["User"])
+@app.post("/forget_password_otp_validation", tags=["User"], response_model= schemas.successResponse)
 async def forget_password_otp_validation(user_mail : EmailStr = Form(...), otp : int = Form(...), new_password : str = Form(...), db : session = Depends(get_DB)):
-    return crud.forget_password_otp_validation(db, user_mail, otp, new_password)
+    try:
+        return crud.forget_password_otp_validation(db, user_mail, otp, new_password)
+    except:
+        raise HTTPException(status_code=500, detail="some internal error occured")
 
-@app.delete("/delete_User", tags=["User"])
+@app.delete("/delete_User", tags=["User"], response_model= schemas.successResponse)
 async def delete_User(db : session = Depends(get_DB), Token : str = Header(...)):
     token_data = token.decode_token(Token)
     if not token_data:
@@ -236,15 +254,17 @@ async def delete_User(db : session = Depends(get_DB), Token : str = Header(...))
         return {
             "message" : "User deleted successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 
 
 
 
 
-@app.post("/create_question", tags=["Question"])
+@app.post("/create_question", tags=["Question"], response_model= schemas.successResponse)
 async def create_question(question : schemas.QuestionIn, db : session = Depends(get_DB), Token : str = Header(...)):
     data = token.decode_token(Token)
     user_id = data["User_id"]
@@ -253,26 +273,38 @@ async def create_question(question : schemas.QuestionIn, db : session = Depends(
         return {
             "message" : "Question created successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
-
+@app.get("/get_questions", tags=["Question"], response_model=list[schemas.QuestionOut])
+async def get_question(db: session = Depends(get_DB), pagenumber : int = Query(...), pagesize : int = Query(...)):
+    try:
+        return crud.get_questions(db, pagesize*(pagenumber - 1), pagesize)
+    except:
+        raise HTTPException(status_code=500, detail="some internal error occured")
 
 @app.get("/get_question_by_title", tags = ["Question"], response_model=list[schemas.QuestionOut])
 async def get_question_by_title(title : str, db : session = Depends(get_DB)):
     try:
         questions = crud.get_questions_by_title(db, title)
         return questions
-    except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 @app.get("/get_questions_by_tags", tags=["Question"], response_model=list[schemas.QuestionOut])
 async def get_question_by_tags(tags : list[str] = Query(...), db : session = Depends(get_DB)):
+    try:
         questions = crud.get_question_by_tags(db, tags)
         return questions
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500 ,detail="Some Internal error occured")
 
 
-@app.put("/edit_question", tags=["Question"])
+@app.put("/edit_question", tags=["Question"], response_model= schemas.successResponse)
 async def edit_question(question : schemas.QuestionIn, db : session = Depends(get_DB), ques_id : int = Query(...), Token : str = Header(...)):
     data = token.decode_token(Token)
     user_id = data["User_id"]
@@ -281,10 +313,12 @@ async def edit_question(question : schemas.QuestionIn, db : session = Depends(ge
         return {
             "message" : "question edited successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
-@app.delete("/delete_question", tags=["Question"])
+@app.delete("/delete_question", tags=["Question"], response_model= schemas.successResponse)
 async def delete_question(db : session = Depends(get_DB), ques_id : int = Query(...), Token : str = Header(...)):
     data = token.decode_token(Token)
     user_id = data["User_id"]
@@ -293,11 +327,13 @@ async def delete_question(db : session = Depends(get_DB), ques_id : int = Query(
         return {
             "message" : "question deleted successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
     
 
-@app.post("/create_answer", tags=["Answer"])
+@app.post("/create_answer", tags=["Answer"], response_model= schemas.successResponse)
 async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB), Token : str = Header(...)):
     data = token.decode_token(Token)
     user_id = data["User_id"]
@@ -306,18 +342,23 @@ async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB
         return {
             "message" : "success"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 @app.get("/get_answers_by_question_id", tags=["Answer"], response_model=list[schemas.AnswerOut])
 async def get_answers_by_Question_id(que_id : int = Query(...), db : session = Depends(get_DB)):
     try:
         return crud.get_ans_by_que_id(db, que_id)
-    except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 
-@app.put("/edit_answer", tags=["Answer"])
+@app.put("/edit_answer", tags=["Answer"], response_model= schemas.successResponse)
 async def edit_answer(db : session = Depends(get_DB), ans_id : int = Query(...), Token : str = Header(...), new_answer : schemas.AnswerBase = Body(...)):
     data = token.decode_token(Token)
     user_id = data["User_id"]
@@ -326,10 +367,12 @@ async def edit_answer(db : session = Depends(get_DB), ans_id : int = Query(...),
         return {
             "message" : "answer  edited successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
 
-@app.delete("/delete_answer", tags=["Answer"])
+@app.delete("/delete_answer", tags=["Answer"], response_model= schemas.successResponse)
 async def delete_answer(answer_id : int = Query(...), db : session = Depends(get_DB), Token : str = Header(...)):
     data = token.decode_token(Token)
     user_id = data["User_id"]
@@ -338,6 +381,58 @@ async def delete_answer(answer_id : int = Query(...), db : session = Depends(get
         return {
             "message" : "Answer deleted Successfuly"
         }
+    except HTTPException as e:
+        raise e
     except:
-        raise HTTPException(status_code=status.WS_1011_INTERNAL_ERROR, detail="Some Internal error occured")
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
+    
+
+
+@app.delete("/admin_user_delete", tags=["Admin CRUD"], response_model= schemas.successResponse)
+async def admin_user_delete(user_id : int = Query(...), db : session = Depends(get_DB), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    admin_id = data.get("admin_id")
+    if not admin_id:
+        raise HTTPException(status_code=400, detail="not authorised to delete this account")
+    try:
+        crud.admin_delete_user(db, user_id)
+        return {
+            "mesage" : "User deleted successfuly"
+        }
+    except HTTPException as e:
+        raise e
+    except:
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
+    
+@app.delete("/admin_question_delete", tags=["Admin CRUD"], response_model= schemas.successResponse)
+async def admin_question_delete(que_id : int = Query(...), db : session = Depends(get_DB), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    admin_id = data.get("admin_id")
+    if not admin_id:
+        raise HTTPException(status_code=400, detail="Not Authorised to delete this question")
+    try:
+        crud.admin_question_delete(db, que_id)
+        return {
+            "mesage" : "question deleted successfuly"
+        }
+    except HTTPException as e:
+        raise e
+    except:
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
+
+@app.delete("/admin_answer_delete", tags=["Admin CRUD"], response_model= schemas.successResponse)
+async def admin_answer_delete(ans_id : int = Query(...), db : session = Depends(get_DB), Token : str = Header(...)):
+    data = token.decode_token(Token)
+    admin_id = data.get("admin_id")
+    if not admin_id:
+        raise HTTPException(status_code=400, detail="Not Authorised to delete this answer")
+    try:
+        crud.admin_answer_delete(db, ans_id)
+        return {
+            "mesage" : "answer deleted successfuly"
+        }
+    except HTTPException as e:
+        raise e
+    except:
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
     

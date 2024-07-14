@@ -26,6 +26,8 @@ config = ConnectionConfig(
 nlp = spacy.load("en_core_web_lg")
 
 def create_admin(db:session, admin : schemas.AdminIn):
+    if admin.admin_secret != env_values["ADMIN_SECRET"]:
+        raise HTTPException(status_code=400, detail="Not authorised to be admin")
     password = admin.password
     hashed = hashing.hash_password(password)
     data_db = models.Admin(name = admin.name, email = admin.email, hashed_password = hashed)
@@ -173,6 +175,7 @@ def delete_User(db : session, User_id : int):
         question_id = question.id
         db.query(models.Answer).filter(models.Answer.question_id == question_id).delete()
     db.query(models.Question).filter(models.Question.owner_id == User_id).delete()
+    db.query(models.Answer).filter(models.Answer.owner_id == User_id).delete()
     db.commit()
 
 
@@ -190,7 +193,18 @@ def create_question(db : session, user_id : int, question : schemas.QuestionIn):
     db.commit()
     db.refresh(question_db)
 
-
+def get_questions(db : session, start : int, end : int):
+    question_db = db.query(models.Question).offset(start).limit(end).all()
+    to_return : list[schemas.QuestionOut] = []
+    for question in question_db:
+        data = {
+                "id" : question.id,
+                "title" : question.title,
+                "Question" : question.question,
+                "tags" : question.tags.split(",")
+        }
+        to_return.append(data)
+    return to_return
 
 def get_questions_by_title(db : session, title: str):
     questions_db = db.query(models.Question).all()
@@ -270,10 +284,13 @@ def create_answer(db : session, user_id : int, answer : schemas.AnswerIn):
 
 def get_ans_by_que_id(db : session, que_id: int):
     answers = db.query(models.Answer).filter(models.Answer.question_id == que_id).all()
+    print(answers)
     to_return : list[dict] = []
     for answer in  answers:
+        print(answer.owner_id)
         owner_name = db.query(models.User).filter(models.User.id == answer.owner_id).first().name
         data = {
+            "id" : answer.id,
             "owner_name" : owner_name,
             "answer" : answer.answer
         }
@@ -300,3 +317,28 @@ def delete_answer(db : session, user_id : int, answer_id : int):
     db.commit()
 
 
+def admin_delete_user(db : session, user_id: int):
+    user_db = db.query(models.User).filter((models.User.id == user_id)).first()
+    if not user_db:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.query(models.User).filter(models.User.id == user_id).delete()
+    question_db = db.query(models.Question).filter(models.Question.owner_id == user_id).all()
+    db.query(models.Question).filter(models.Question.owner_id == user_id).delete()
+    for question in question_db:
+        db.query(models.Answer).filter(models.Answer.question_id == question.id).delete()
+    db.query(models.Answer).filter(models.Answer.owner_id == user_id).delete()
+    db.commit()
+    
+def admin_question_delete(db : session, que_id : int):
+    que_db = db.query(models.Question).filter(models.Question.id == que_id).first()
+    if not que_db:
+        raise HTTPException(status_code=404, detail="question not found")
+    db.query(models.Question).filter(models.Question.id == que_id).delete()
+    db.commit()
+
+def admin_answer_delete(db : session, ans_id : int):
+    ans_db = db.query(models.Answer).filter(models.Answer.id == ans_id).first()
+    if not ans_db:
+        raise HTTPException(status_code=404, detail="answer not found")
+    db.query(models.Answer).filter(models.Answer.id == ans_id).delete()
+    db.commit()

@@ -1,5 +1,9 @@
 from pydantic import BaseModel, EmailStr
 
+
+class successResponse(BaseModel):
+    message : str
+
 class AnswerBase(BaseModel):
     answer : str
 
@@ -40,6 +44,7 @@ class AdminBase(BaseModel):
 
 class AdminIn(AdminBase):
     password : str
+    admin_secret : str
 
 class AdminOut(AdminBase):
     pass
