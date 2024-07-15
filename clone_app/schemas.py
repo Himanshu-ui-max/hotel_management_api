@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-
+from typing import List, Union
 
 class successResponse(BaseModel):
     message : str
@@ -24,11 +24,11 @@ class AnswerOut(AnswerBase):
 class QuestionBase(BaseModel):
     title : str
     Question : str
-    tags : list[str] | None = None
+    tags : Union[List[str], None] = None
 
 class QuestionDB(QuestionBase):
     owner_id : int
-    answers : list[AnswerDB] | None = None
+    answers : Union[List[AnswerDB], None] = None
 
 class QuestionIn(QuestionBase):
     pass
@@ -52,7 +52,7 @@ class AdminOut(AdminBase):
     pass
 
 class AdminDB(AdminBase):
-    id : int | None  = None
+    id : Union[int, None]  = None
     hashed_password : str
 
     class Config:
@@ -69,10 +69,10 @@ class UserOut(UserBase):
     pass
 
 class UserDB(UserBase):
-    id : int | None  = None
+    id : Union[int, None]  = None
     hashed_password : str
-    questions : list[QuestionDB]
-    answers : list[AnswerDB]
+    questions : List[QuestionDB]
+    answers : List[AnswerDB]
     class Config:
         from_attributes = True
 

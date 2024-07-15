@@ -7,7 +7,7 @@ import spacy
 from fastapi_mail import FastMail, ConnectionConfig, MessageSchema
 from dotenv import dotenv_values
 import random
-
+from typing import Union
 
 env_values = dotenv_values(".env")
 env_values = dict(env_values)
@@ -37,7 +37,7 @@ def create_admin(db:session, admin : schemas.AdminIn):
     db.refresh(data_db)
     return schemas.AdminOut(**admin.dict())
 
-def get_admin(db: session, email : str)->models.Admin | bool:
+def get_admin(db: session, email : str)-> Union[models.Admin, bool]:
     admin = db.query(models.Admin).filter(models.Admin.email == email).first()
     if not admin:
         return False
@@ -159,7 +159,7 @@ def forget_password_otp_validation(db : session, user_mail : EmailStr, otp : int
         "message" :"password reset succesfull"
     }
 
-def get_User(db: session, email : str) -> models.User | bool:
+def get_User(db: session, email : str) -> Union[models.User, bool]:
     User = db.query(models.User).filter(models.User.email == email).first()
     if not User:
         return False
