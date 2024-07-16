@@ -1,10 +1,21 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Header, Form, Query, Body, Path
 from fastapi.responses import HTMLResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import EmailStr
 from sqlalchemy.orm import session
 from . import crud, schemas, hashing, token, models
 from .database import session_local, engine, Base
+
+origins = ["*"]
+
 app = FastAPI(title="HIMS' Stackoverflow")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -15,7 +26,11 @@ def get_DB():
     finally:
         db.close()
 
-
+@app.get("/")
+async def home():
+    return {
+        "message" : "welcome"
+    }
 
 @app.get("/email_verification/{Token}", tags=["Email service"])
 async def email_verification(Token : str = Path(...), db : session = Depends(get_DB)):
