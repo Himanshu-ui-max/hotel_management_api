@@ -1,10 +1,21 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Header, Form, Query, Body, Path
 from fastapi.responses import HTMLResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import EmailStr
 from sqlalchemy.orm import session
 from . import crud, schemas, hashing, token, models
 from .database import session_local, engine, Base
+
+origins = ["*"]
+
 app = FastAPI(title="HIMS' Stackoverflow")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -15,7 +26,11 @@ def get_DB():
     finally:
         db.close()
 
-
+@app.get("/")
+async def home():
+    return {
+        "message" : "welcome"
+    }
 
 @app.get("/email_verification/{Token}", tags=["Email service"])
 async def email_verification(Token : str = Path(...), db : session = Depends(get_DB)):
@@ -86,7 +101,7 @@ async def login(db: session = Depends(get_DB), email : EmailStr = Form(...), pas
             if not User_db:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
             if not User_db.is_verified:
-                raise HTTPException(status_code=400, detail="User not verified")
+                raise HTTPException(status_code=400, detail="Mail-ID is not verified. Kindly check your mail inbox and verify your mail-ID")
             if not hashing.verify_password(password, User_db.hashed_password):
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect Password or email")
             data = {
@@ -228,8 +243,8 @@ async def update_User_name(db : session = Depends(get_DB), new_name : str = Form
         raise HTTPException(status_code=500, detail="Some Internal error occured")
 
 
-@app.post("/forget_password_otp_generation", tags=["User"], response_model= schemas.successResponse)
-async def forget_password_otp_generation(user_mail : EmailStr, db : session  =Depends(get_DB)):
+@app.get("/forget_password_otp_generation", tags=["User"], response_model= schemas.successResponse)
+async def forget_password_otp_generation(user_mail : EmailStr, db : session = Depends(get_DB)):
     if await crud.forget_password_otp_generation(user_mail,db):
         return {
             "message" : "otp sent to your mail successfuly"
@@ -240,6 +255,8 @@ async def forget_password_otp_generation(user_mail : EmailStr, db : session  =De
 async def forget_password_otp_validation(user_mail : EmailStr = Form(...), otp : int = Form(...), new_password : str = Form(...), db : session = Depends(get_DB)):
     try:
         return crud.forget_password_otp_validation(db, user_mail, otp, new_password)
+    except HTTPException as e:
+        raise e
     except:
         raise HTTPException(status_code=500, detail="some internal error occured")
 
@@ -266,9 +283,9 @@ async def delete_User(db : session = Depends(get_DB), Token : str = Header(...))
 
 @app.post("/create_question", tags=["Question"], response_model= schemas.successResponse)
 async def create_question(question : schemas.QuestionIn, db : session = Depends(get_DB), Token : str = Header(...)):
-    data = token.decode_token(Token)
-    user_id = data["User_id"]
     try:
+        data = token.decode_token(Token)
+        user_id = data["User_id"]
         crud.create_question(db, user_id, question)
         return {
             "message" : "Question created successfuly"
@@ -278,7 +295,7 @@ async def create_question(question : schemas.QuestionIn, db : session = Depends(
     except:
         raise HTTPException(status_code=500, detail="Some Internal error occured")
 
-@app.get("/get_questions", tags=["Question"], response_model=list[schemas.QuestionOut])
+@app.get("/get_questions", tags=["Question"], response_model=list[schemas.QuestionList])
 async def get_question(db: session = Depends(get_DB), pagenumber : int = Query(...), pagesize : int = Query(...)):
     try:
         return crud.get_questions(db, pagesize*(pagenumber - 1), pagesize)
@@ -293,9 +310,21 @@ async def get_question_by_id(db : session = Depends(get_DB), que_id : int = Quer
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail="Some Internal error occured")
-    
 
-@app.get("/get_question_by_title", tags = ["Question"], response_model=list[schemas.QuestionOut])
+
+@app.get("/get_user_questions", tags=["Question"], response_model=list[schemas.QuestionList])
+async def get_user_questions(db : session = Depends(get_DB), Token : str = Header(...)):
+    try:
+        data = token.decode_token(Token)
+        user_id = data["User_id"]
+        return crud.get_user_questions(db, user_id)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Some Internal error occured")
+           
+
+@app.get("/get_question_by_title", tags = ["Question"], response_model=list[schemas.QuestionList])
 async def get_question_by_title(title : str, db : session = Depends(get_DB)):
     try:
         questions = crud.get_questions_by_title(db, title)
@@ -316,9 +345,9 @@ async def get_question_by_tags(tags : list[str] = Query(...), db : session = Dep
 
 @app.put("/edit_question", tags=["Question"], response_model= schemas.successResponse)
 async def edit_question(question : schemas.QuestionIn, db : session = Depends(get_DB), ques_id : int = Query(...), Token : str = Header(...)):
-    data = token.decode_token(Token)
-    user_id = data["User_id"]
     try:
+        data = token.decode_token(Token)
+        user_id = data["User_id"]
         crud.edit_question(db, user_id, ques_id, question)
         return {
             "message" : "question edited successfuly"
@@ -330,9 +359,9 @@ async def edit_question(question : schemas.QuestionIn, db : session = Depends(ge
 
 @app.delete("/delete_question", tags=["Question"], response_model= schemas.successResponse)
 async def delete_question(db : session = Depends(get_DB), ques_id : int = Query(...), Token : str = Header(...)):
-    data = token.decode_token(Token)
-    user_id = data["User_id"]
     try:
+        data = token.decode_token(Token)
+        user_id = data["User_id"]
         crud.delete_question(db, user_id, ques_id)
         return {
             "message" : "question deleted successfuly"
@@ -345,9 +374,9 @@ async def delete_question(db : session = Depends(get_DB), ques_id : int = Query(
 
 @app.post("/create_answer", tags=["Answer"], response_model= schemas.successResponse)
 async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB), Token : str = Header(...)):
-    data = token.decode_token(Token)
-    user_id = data["User_id"]
     try:
+        data = token.decode_token(Token)
+        user_id = data["User_id"]
         crud.create_answer(db, user_id, answer)
         return {
             "message" : "success"
@@ -357,7 +386,7 @@ async def create_answer(answer : schemas.AnswerIn, db : session = Depends(get_DB
     except:
         raise HTTPException(status_code=500, detail="Some Internal error occured")
 
-@app.get("/get_user_answers", tags=["Answer"], response_model=list[schemas.AnswerOut])
+@app.get("/get_user_answers", tags=["Answer"], response_model=list[schemas.AnswerUser])
 async def get_user_answers(db : session = Depends(get_DB), Token : str = Header(...)):
     try:
         data = token.decode_token(Token)
@@ -381,10 +410,10 @@ async def get_answers_by_Question_id(que_id : int = Query(...), db : session = D
 
 
 @app.put("/edit_answer", tags=["Answer"], response_model= schemas.successResponse)
-async def edit_answer(db : session = Depends(get_DB), ans_id : int = Query(...), Token : str = Header(...), new_answer : schemas.AnswerBase = Body(...)):
-    data = token.decode_token(Token)
-    user_id = data["User_id"]
+async def edit_answer(new_answer : schemas.AnswerBase, db : session = Depends(get_DB), ans_id : int = Query(...), Token : str = Header(...)):
     try:
+        data = token.decode_token(Token)
+        user_id = data["User_id"]
         crud.edit_answer(db,user_id,ans_id,new_answer.answer)
         return {
             "message" : "answer  edited successfuly"
@@ -396,9 +425,9 @@ async def edit_answer(db : session = Depends(get_DB), ans_id : int = Query(...),
 
 @app.delete("/delete_answer", tags=["Answer"], response_model= schemas.successResponse)
 async def delete_answer(answer_id : int = Query(...), db : session = Depends(get_DB), Token : str = Header(...)):
-    data = token.decode_token(Token)
-    user_id = data["User_id"]
     try:
+        data = token.decode_token(Token)
+        user_id = data["User_id"]
         crud.delete_answer(db, user_id, answer_id)
         return {
             "message" : "Answer deleted Successfuly"
