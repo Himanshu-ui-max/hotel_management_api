@@ -147,6 +147,8 @@ def forget_password_otp_validation(db : session, user_mail : EmailStr, otp : int
     user_db = db.query(models.User).filter(models.User.email == user_mail).first()
     if not user_db:
         raise HTTPException(status_code=404, detail="user not found")
+    if user_db.otp == 0:
+        raise HTTPException(status_code=400, detail="OTP not generated")
     if otp != user_db.otp:
         raise HTTPException(status_code=400, detail="invalid OTP")
     new_hashed_password = hashing.hash_password(new_password)
@@ -195,13 +197,24 @@ def create_question(db : session, user_id : int, question : schemas.QuestionIn):
 
 def get_questions(db : session, start : int, end : int):
     question_db = db.query(models.Question).offset(start).limit(end).all()
-    to_return : list[schemas.QuestionOut] = []
+    to_return : list[schemas.QuestionList] = []
     for question in question_db:
         data = {
                 "id" : question.id,
                 "title" : question.title,
-                "Question" : question.question,
                 "tags" : question.tags.split(",")
+        }
+        to_return.append(data)
+    return to_return
+
+def get_user_questions(db : session, user_id : int):
+    question_db = db.query(models.Question).filter(models.Question.owner_id == user_id).all()
+    to_return : list[schemas.QuestionList] = []
+    for question in question_db:
+        data = {
+            "id" : question.id,
+            "title" : question.title,
+            "tags" : question.tags.split(",")
         }
         to_return.append(data)
     return to_return
@@ -221,16 +234,15 @@ def get_question_by_id(db : session, que_id : int):
 
 def get_questions_by_title(db : session, title: str):
     questions_db = db.query(models.Question).all()
-    to_return : list[schemas.QuestionOut] = []
+    to_return : list[schemas.QuestionList] = []
     for question in questions_db:
         if nlp(question.title).similarity(nlp(title)) >= 0.4:            
             data = {
                 "id" : question.id,
                 "title" : question.title,
-                "Question" : question.question,
                 "tags" : question.tags.split(",")
             }
-            data = schemas.QuestionOut(**data)
+            data = schemas.QuestionList(**data)
             to_return.append(data)
     return to_return
 
@@ -297,16 +309,16 @@ def create_answer(db : session, user_id : int, answer : schemas.AnswerIn):
 
 def get_user_answers(db : session, user_id):
     answers = db.query(models.Answer).filter(models.Answer.owner_id == user_id).all()
-    to_return : list[schemas.AnswerOut] = []
+    to_return : list[schemas.AnswerUser] = []
     for answer in  answers:
-        owner_name = db.query(models.User).filter(models.User.id == answer.owner_id).first().name
+        question_title = db.query(models.Question).filter(models.Question.id == answer.question_id).first().title
         data = {
             "id" : answer.id,
-            "owner_name" : owner_name,
+            "question_title" : question_title,
             "answer" : answer.answer,
             "question_id" : answer.question_id
         }
-        to_return.append(schemas.AnswerOut(**data))
+        to_return.append(schemas.AnswerUser(**data))
 
     return to_return
 

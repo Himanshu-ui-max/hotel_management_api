@@ -15,6 +15,10 @@ class AnswerDB(AnswerBase):
 class AnswerIn(AnswerBase):
     question_id : int
 
+class AnswerUser(AnswerBase):
+    id : int
+    question_title : str
+    question_id : int
 
 class AnswerOut(AnswerBase):
     id : int
@@ -30,6 +34,10 @@ class QuestionDB(QuestionBase):
     owner_id : int
     answers : Union[List[AnswerDB], None] = None
 
+class QuestionList(BaseModel):
+    id : int
+    title : str
+    tags : list[str]
 class QuestionIn(QuestionBase):
     pass
 class QuestionOut(QuestionBase):
